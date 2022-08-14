@@ -1,7 +1,7 @@
 # usb-volume-mixier
 
 ## USB音量ミキサーとは？
-<blockquote class="twitter-tweet"><p lang="ja" dir="ltr">USB音量ミキサー完成した！<br>音量をアプリ毎に変えられる素敵なデバイスです。<br>ながら作業のお供に一つ <a href="https://t.co/MeCaaNW36u">pic.twitter.com/MeCaaNW36u</a></p>&mdash; あげぱん (@agepan_ft_miku) <a href="https://twitter.com/agepan_ft_miku/status/1557766607664926722?ref_src=twsrc%5Etfw">August 11, 2022</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+<blockquote class="twitter-tweet"><p lang="ja" dir="ltr">USB音量ミキサー完成した！<br>音量をアプリ毎に変えられる素敵なデバイスです。<br>ながら作業のお供に一つ <a href="https://t.co/MeCaaNW36u">pic.twitter.com/MeCaaNW36u</a></p>&mdash; あげぱん (@agepan_ft_miku) <a href="https://twitter.com/agepan_ft_miku/status/1557766607664926722?ref_src=twsrc%5Etfw">August 11, 2022</a></blockquote>
 
 <br>
 
