@@ -38,7 +38,7 @@ namespace USB_Volumemixer
         }
 
 
-        public AppAudioInfo[] get_audiosession(MMDevice device)
+        public AppAudioInfo[] GetAudioSession(MMDevice device)
         {
             IconManage iconManage = new IconManage();
             var sessions = device.AudioSessionManager.Sessions;
@@ -70,15 +70,15 @@ namespace USB_Volumemixer
 
                 if (process.Id == 0)
                 {
-                    appInfo[i].AppName = "System Sound";
+                    appInfo[i].appName = "System Sound";
                 }
                 else if (session.DisplayName != "")
                 {
-                    appInfo[i].AppName = session.DisplayName;
+                    appInfo[i].appName = session.DisplayName;
                 }
                 else
                 {
-                    appInfo[i].AppName = Path.GetFileName(exePath);
+                    appInfo[i].appName = Path.GetFileName(exePath);
                 }
             }
 

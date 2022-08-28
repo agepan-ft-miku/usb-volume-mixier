@@ -1,25 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using NAudio.CoreAudioApi;
-using System.Drawing;
+﻿using NAudio.CoreAudioApi;
 using NAudio.CoreAudioApi.Interfaces;
+using System;
+using System.Drawing;
 
 namespace USB_Volumemixer
 {
-    internal class AppAudioInfo
+    public class AppAudioInfo
     {
-        public string AppName = "";
+        public string appName = "";
         public string iconPath = "";
         public Bitmap bmp = null;
         private int appVol = 0;
-        private AudioSessionControl thissession;
+        private AudioSessionControl session;
 
         public AppAudioInfo(AudioSessionControl session)
         {
-            this.thissession = session;
+            this.session = session;
             this.appVol = (int)(session.SimpleAudioVolume.Volume * 100);
         }
 
@@ -29,14 +25,14 @@ namespace USB_Volumemixer
             set
             {
                 appVol = value;
-                this.thissession.SimpleAudioVolume.Volume = (float)appVol / 100;
+                this.session.SimpleAudioVolume.Volume = (float)appVol / 100;
             }
         }
 
         public bool Mute
         {
-            get { return this.thissession.SimpleAudioVolume.Mute; }
-            set { this.thissession.SimpleAudioVolume.Mute = value; }
+            get { return this.session.SimpleAudioVolume.Mute; }
+            set { this.session.SimpleAudioVolume.Mute = value; }
         }
     }
 }
