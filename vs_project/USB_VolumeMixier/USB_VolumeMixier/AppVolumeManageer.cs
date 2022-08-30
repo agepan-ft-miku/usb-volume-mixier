@@ -64,7 +64,6 @@ namespace USB_Volumemixer
                 else
                 {
                     exePath = ProcessExecutablePath(process);
-                    appInfo[i].iconPath = exePath;
                     appInfo[i].bmp = iconManage.GetIcon(exePath);
                 }
 
@@ -80,6 +79,43 @@ namespace USB_Volumemixer
                 {
                     appInfo[i].appName = Path.GetFileName(exePath);
                 }
+            }
+
+            return appInfo;
+        }
+
+        public AppAudioInfo ConvertSessionToInfo(AudioSessionControl session)
+        {
+            IconManage iconManage = new IconManage();
+            AppAudioInfo appInfo = new AppAudioInfo(session);
+            
+            Process process = Process.GetProcessById((int)session.GetProcessID);
+            string exePath = session.IconPath;
+
+            string[] arr = exePath.Split(',');
+            exePath = System.Environment.ExpandEnvironmentVariables(arr[0].Replace("@", ""));
+
+            if (Path.GetExtension(exePath).ToLower() == ".dll")
+            {
+                appInfo.bmp = iconManage.GetIconFromEXEDLL(exePath, Convert.ToInt32(arr[1]), true).ToBitmap();
+            }
+            else
+            {
+                exePath = ProcessExecutablePath(process);
+                appInfo.bmp = iconManage.GetIcon(exePath);
+            }
+
+            if (process.Id == 0)
+            {
+                appInfo.appName = "System Sound";
+            }
+            else if (session.DisplayName != "")
+            {
+                appInfo.appName = session.DisplayName;
+            }
+            else
+            {
+                appInfo.appName = Path.GetFileName(exePath);
             }
 
             return appInfo;

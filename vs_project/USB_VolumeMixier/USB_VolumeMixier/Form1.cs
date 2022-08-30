@@ -24,7 +24,6 @@ namespace USB_Volumemixer
 			DATA_INIT,
 			DATA_ICON,
 			DATA_READY,
-			DATA_MUTE,
 		};
 
 		enum com_packet
@@ -39,14 +38,16 @@ namespace USB_Volumemixer
 
 		const int PACKET_SIZE = 64;
 		const int PAKET_DATA_SIZE = PACKET_SIZE - (int)com_packet.COM_DATA_VAL;
-		
+
 		const int VendorId = 0x2886;
 		const int ProductId = 0x8042;
 		HidLibrary.HidDevice usbdevice;
-		AppAudioInfo[] appInfo;
 		int selectItem = 0;
+		bool isDataRecieve = false;
 		MMDeviceEnumerator devEnum;
 		AppVolumeManageer volm;
+
+		List<AppAudioInfo> appList = new List<AppAudioInfo>();
 
 		public Form1()
 		{
@@ -83,7 +84,7 @@ namespace USB_Volumemixer
 					if (usbdevice != null)
 					{
 						HidLibrary.HidReport rep = new HidLibrary.HidReport(PACKET_SIZE+1);
-						rep.Data = BuildReadyPacket(appInfo[0]);
+						rep.Data = BuildReadyPacket(appList[0]);
 						usbdevice.WriteReport(rep);
 					}
 				}));
@@ -110,10 +111,9 @@ namespace USB_Volumemixer
 				switch ((data_id)report.Data[Convert.ToByte(com_packet.COM_DATA_ID)])
 				{
 					case data_id.DATA_VOL:
-						if (listBox1.SelectedIndex != -1)
-						{
-							appInfo[listBox1.SelectedIndex].AppVol = report.Data[(byte)com_packet.COM_DATA_VAL];
-						}
+						isDataRecieve = true;
+						appList[listBox1.SelectedIndex].AppVol = report.Data[(byte)com_packet.COM_DATA_VAL];
+						isDataRecieve = false;
 						break;
 
 					case data_id.DATA_SW1:
@@ -122,14 +122,15 @@ namespace USB_Volumemixer
 						{
 							selectItem = listBox1.Items.Count - 1;
 							listBox1.SelectedIndex = selectItem;
-						} else
+						}
+						else
 						{
 							selectItem--;
 							listBox1.SelectedIndex = selectItem;
-						} 
-						rep.Data = BuildInitPacket(appInfo[listBox1.SelectedIndex]);
+						}
+						rep.Data = BuildInitPacket(appList[selectItem]);
 						usbdevice.WriteReport(rep);
-						foreach (var item in BuiltIconPacket(appInfo[listBox1.SelectedIndex]))
+						foreach (var item in BuiltIconPacket(appList[selectItem]))
 						{
 							rep.Data = item;
 							usbdevice.WriteReport(rep);
@@ -137,8 +138,8 @@ namespace USB_Volumemixer
 						break;
 
 					case data_id.DATA_SW2:
-						appInfo[listBox1.SelectedIndex].Mute = !appInfo[listBox1.SelectedIndex].Mute;
-						rep.Data = BuildMutePacket(appInfo[listBox1.SelectedIndex]);
+						appList[selectItem].Mute = !appList[selectItem].Mute;
+						rep.Data = BuildVolumePacket(appList[selectItem]);
 						usbdevice.WriteReport(rep);
 						break;
 
@@ -155,9 +156,9 @@ namespace USB_Volumemixer
 							selectItem = 0;
 							listBox1.SelectedIndex = selectItem;
 						}
-						rep.Data = BuildInitPacket(appInfo[listBox1.SelectedIndex]);
+						rep.Data = BuildInitPacket(appList[selectItem]);
 						usbdevice.WriteReport(rep);
-						foreach (var item in BuiltIconPacket(appInfo[listBox1.SelectedIndex]))
+						foreach (var item in BuiltIconPacket(appList[selectItem]))
 						{
 							rep.Data = item;
 							usbdevice.WriteReport(rep);
@@ -166,11 +167,11 @@ namespace USB_Volumemixer
 						break;
 
 					case data_id.DATA_INIT:
-						rep.Data = BuildInitPacket(appInfo[0]);
+						rep.Data = BuildInitPacket(appList[0]);
 						listBox1.SelectedIndex = 0;
 
 						usbdevice.WriteReport(rep);
-						foreach (var item in BuiltIconPacket(appInfo[0]))
+						foreach (var item in BuiltIconPacket(appList[0]))
 						{
 							rep.Data = item;
 							usbdevice.WriteReport(rep);
@@ -201,19 +202,20 @@ namespace USB_Volumemixer
 			byte[] appName = System.Text.Encoding.ASCII.GetBytes(appAudioInfo.appName);
 			Array.Copy(appName, 0, bytes, (uint)com_packet.COM_DATA_VAL+2,
 				((PAKET_DATA_SIZE-1) < appName.Length) ? (PAKET_DATA_SIZE-1) : appName.Length);
-  
+
 			return bytes;
 		}
 
-		private byte[] BuildMutePacket(AppAudioInfo appAudioInfo)
+		private byte[] BuildVolumePacket(AppAudioInfo appAudioInfo)
 		{
 			byte[] bytes = new byte[PACKET_SIZE+1];
-			bytes[(byte)com_packet.COM_DATA_ID]				= Convert.ToByte(data_id.DATA_MUTE);
+			bytes[(byte)com_packet.COM_DATA_ID]				= Convert.ToByte(data_id.DATA_VOL);
 			bytes[(byte)com_packet.COM_PACKET_NO]			= 0;
 			bytes[(byte)com_packet.COM_PACKET_NUM]		= 1;
-			bytes[(byte)com_packet.COM_DATA_SIZE_LOW]	= 1;
+			bytes[(byte)com_packet.COM_DATA_SIZE_LOW]	= 2;
 			bytes[(byte)com_packet.COM_DATA_SIZE_HIGH]	= 0;
-			bytes[(byte)com_packet.COM_DATA_VAL]				= Convert.ToByte(appAudioInfo.Mute);
+			bytes[(byte)com_packet.COM_DATA_VAL]				= Convert.ToByte(appAudioInfo.AppVol);
+			bytes[(byte)com_packet.COM_DATA_VAL + 1]		= Convert.ToByte(appAudioInfo.Mute);
 
 			return bytes;
 		}
@@ -235,8 +237,8 @@ namespace USB_Volumemixer
 		{
 			byte[] bitmap = volm.IconToBinaty(appAudioInfo);
 			byte[][] data = new byte[bitmap.Length/PAKET_DATA_SIZE+1][];
-			
-			for(uint i=0; i<data.Length; i++)
+
+			for (uint i = 0; i<data.Length; i++)
 			{
 				data[i] = new byte[PACKET_SIZE];
 				data[i][(byte)com_packet.COM_DATA_ID]					= Convert.ToByte(data_id.DATA_ICON);
@@ -246,7 +248,7 @@ namespace USB_Volumemixer
 				data[i][(byte)com_packet.COM_DATA_SIZE_HIGH]	= Convert.ToByte(bitmap.Length >> 8);
 				data[i][(byte)com_packet.COM_DATA_VAL]				= Convert.ToByte(appAudioInfo.AppVol);
 
-				Array.Copy(bitmap, i*PAKET_DATA_SIZE, data[i], (uint)com_packet.COM_DATA_VAL, 
+				Array.Copy(bitmap, i*PAKET_DATA_SIZE, data[i], (uint)com_packet.COM_DATA_VAL,
 								(PAKET_DATA_SIZE < bitmap.Length-i*PAKET_DATA_SIZE) ? PAKET_DATA_SIZE : bitmap.Length-i*PAKET_DATA_SIZE);
 			}
 
@@ -256,13 +258,51 @@ namespace USB_Volumemixer
 		private void UpdateSessionList()
 		{
 			var device = devEnum.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-			
-			appInfo = volm.GetAudioSession(device);
+			var sessions = device.AudioSessionManager.Sessions;
 
+			for (var i = 0; i < sessions.Count; i++)
+			{
+				var session = sessions[i];
+				if ( !appList.Any(m => m.sessionId == session.GetSessionIdentifier))
+                {
+					var appInfo = volm.ConvertSessionToInfo(session);
+					appList.Add(appInfo);
+					appInfo.SessionStateExpired += (sender, e) => {
+						if (usbdevice != null && appList.IndexOf(appInfo) == selectItem)
+						{
+							HidLibrary.HidReport rep = new HidLibrary.HidReport(PACKET_SIZE+1);
+							rep.Data = BuildReadyPacket(appList[0]);
+							usbdevice.WriteReport(rep);
+							selectItem = 0;
+						}
+						appList.Remove(appInfo);
+					};
+                    appInfo.VolumeChanged += (sender, e) =>
+                    {
+                        AppAudioInfo senderInfo = sender as AppAudioInfo;
+                        if (usbdevice != null && appList.IndexOf(senderInfo) == selectItem && isDataRecieve == false)
+                        {
+                            HidLibrary.HidReport rep = new HidLibrary.HidReport(PACKET_SIZE+1);
+                            rep.Data = BuildVolumePacket(appList[selectItem]);
+                            usbdevice.WriteReport(rep);
+                        }
+                    };
+                }
+			}
+
+			UpdateListBox();
+		}
+
+		private void UpdateListBox()
+        {
 			listBox1.Items.Clear();
-			foreach (AppAudioInfo appAudioInfo in appInfo)
+			foreach (AppAudioInfo appAudioInfo in appList)
 			{
 				listBox1.Items.Add(appAudioInfo.appName);
+			}
+			if (listBox1.SelectedIndex == -1)
+            {
+				listBox1.SelectedIndex = 0;
 			}
 		}
 	}

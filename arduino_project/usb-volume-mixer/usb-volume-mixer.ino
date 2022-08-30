@@ -41,14 +41,13 @@ void draw16bitRGBBitmapNx(int16_t x, int16_t y, uint16_t *bitmap, int16_t w, int
 /* データID定義 */
 enum data_id {
 	OFFSET_ID = 'a',
-	DATA_VOL,		// （デバイス→PC）ボリューム値変化通知
+	DATA_VOL,		//（デバイス⇔PC）ボリューム値変化通知
 	DATA_SW1,		//（デバイス→PC）スイッチ（1）押下通知
 	DATA_SW2,		//（デバイス→PC）スイッチ（2）押下通知
 	DATA_SW3,		//（デバイス→PC）スイッチ（3）押下通知
-	DATA_INIT,		//（PC→デバイス）音量調節対象のアプリ名と音量を初期化
+	DATA_INIT,		//（PC⇔デバイス）音量調節対象のアプリ名と音量を初期化
 	DATA_ICON,		//（PC→デバイス）アイコン画像の送信
 	DATA_READY,		//（PC→デバイス）PC制御アプリ起動
-	DATA_MUTE,		// （PC→デバイス）アプリミュート
 };
 
 /* 通信パケット定義 */
@@ -126,34 +125,36 @@ void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8
 			draw16bitRGBBitmapNx(icon_pos_x, icon_pos_y, rev_icon.icon_buf, icon_size, icon_size, icon_scale);
 		}
 		device_ready = true;
-	} else if(buffer[COM_DATA_ID] == DATA_MUTE) {
-		// アプリミュート
-		is_mute = buffer[COM_DATA_VAL];
+	} else if(buffer[COM_DATA_ID] == DATA_VOL) {
+		// PC側で変更された音量の通知
+		Set_ENC_count(buffer[COM_DATA_VAL]);
+		is_mute = buffer[COM_DATA_VAL + 1];
 	}
 }
 
 /* ロータリーエンコーダ関係 */
 volatile bool pinA = false;
 volatile bool pinB = false;
-volatile byte current = 0;
-volatile byte previous = 0;
-volatile int16_t counter = 0;
+volatile byte enc_current = 0;
+volatile byte enc_previous = 0;
+volatile int16_t vol_current = 0;
+volatile int16_t vol_previous = 0;
 volatile int16_t cw[] = {1, 3, 0, 2};
 volatile int16_t ccw[] = {2, 0, 3, 1};
 
 uint16_t Get_ENC_count()
 {
-	return counter;
+	return vol_current;
 }
 
 void Set_ENC_count(int16_t c)
 {
 	if(c > 100) {
-		counter = 100;
+		vol_current = 100;
 	}else if(c < 0) {
-		counter = 0;
+		vol_current = 0;
 	} else {
-		counter = c;
+		vol_current = c;
 	}
 }
 
@@ -164,20 +165,20 @@ void ENC_READ()
 	pinB = digitalRead(ENC_B);
 
 	//0～3の数字に変換
-	current = pinA + pinB * 2;
+	enc_current = pinA + pinB * 2;
 
 	//currentの値とCW/CCWの値を比較。一致すればcounterを増減
-	if (current == cw[previous]) counter++;
-	if (current == ccw[previous]) counter--;
+	if (enc_current == cw[enc_previous]) vol_current++;
+	if (enc_current == ccw[enc_previous]) vol_current--;
 
-	if(counter > 100) {
-		counter = 100;
+	if(vol_current > 100) {
+		vol_current = 100;
 	}
-	if(counter < 0) {
-		counter = 0;
+	if(vol_current < 0) {
+		vol_current = 0;
 	}
 
-	if(counter != previous) {
+	if(vol_current != vol_previous) {
 		/* カウント値更新時に行う処理 */
 		uint8_t buf[PACKET_SIZE] = {0};
 		buf[COM_DATA_ID] = DATA_VOL;
@@ -185,10 +186,11 @@ void ENC_READ()
 		buf[COM_PACKET_NUM] = 0;
 		buf[COM_DATA_SIZE_LOW] = 1;
 		buf[COM_DATA_SIZE_HIGH] = 0;
-		buf[COM_DATA_VAL] = counter;
+		buf[COM_DATA_VAL] = vol_current;
 		usb_hid.sendReport(0, buf, PACKET_SIZE);
 	}
-	previous = current;
+	enc_previous = enc_current;
+	vol_previous = vol_current;
 }
 
 /* ボタン関係 */
