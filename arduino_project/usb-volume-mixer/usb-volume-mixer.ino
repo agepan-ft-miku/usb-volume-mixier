@@ -69,6 +69,8 @@ String str_exe = "default";
 /* USB HID関係 */
 #define PACKET_SIZE 64
 #define PAKET_DATA_SIZE (PACKET_SIZE-COM_DATA_VAL)
+#define VOL_CHG_INTERVAL 500
+volatile unsigned long msTime_vol;
 
 uint8_t const desc_hid_report[] =
 {
@@ -125,7 +127,7 @@ void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8
 			draw16bitRGBBitmapNx(icon_pos_x, icon_pos_y, rev_icon.icon_buf, icon_size, icon_size, icon_scale);
 		}
 		device_ready = true;
-	} else if(buffer[COM_DATA_ID] == DATA_VOL) {
+	} else if((buffer[COM_DATA_ID] == DATA_VOL) && ((millis() - msTime_vol) > VOL_CHG_INTERVAL)) {
 		// PC側で変更された音量の通知
 		Set_ENC_count(buffer[COM_DATA_VAL]);
 		is_mute = buffer[COM_DATA_VAL + 1];
@@ -188,6 +190,7 @@ void ENC_READ()
 		buf[COM_DATA_SIZE_HIGH] = 0;
 		buf[COM_DATA_VAL] = vol_current;
 		usb_hid.sendReport(0, buf, PACKET_SIZE);
+		msTime_vol = millis();
 	}
 	enc_previous = enc_current;
 	vol_previous = vol_current;

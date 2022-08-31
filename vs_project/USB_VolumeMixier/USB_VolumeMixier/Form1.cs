@@ -43,7 +43,6 @@ namespace USB_Volumemixer
 		const int ProductId = 0x8042;
 		HidLibrary.HidDevice usbdevice;
 		int selectItem = 0;
-		bool isDataRecieve = false;
 		MMDeviceEnumerator devEnum;
 		AppVolumeManageer volm;
 
@@ -111,9 +110,7 @@ namespace USB_Volumemixer
 				switch ((data_id)report.Data[Convert.ToByte(com_packet.COM_DATA_ID)])
 				{
 					case data_id.DATA_VOL:
-						isDataRecieve = true;
 						appList[listBox1.SelectedIndex].AppVol = report.Data[(byte)com_packet.COM_DATA_VAL];
-						isDataRecieve = false;
 						break;
 
 					case data_id.DATA_SW1:
@@ -280,7 +277,7 @@ namespace USB_Volumemixer
                     appInfo.VolumeChanged += (sender, e) =>
                     {
                         AppAudioInfo senderInfo = sender as AppAudioInfo;
-                        if (usbdevice != null && appList.IndexOf(senderInfo) == selectItem && isDataRecieve == false)
+                        if (usbdevice != null && appList.IndexOf(senderInfo) == selectItem)
                         {
                             HidLibrary.HidReport rep = new HidLibrary.HidReport(PACKET_SIZE+1);
                             rep.Data = BuildVolumePacket(appList[selectItem]);
