@@ -8,11 +8,11 @@
 #define SW1			D2
 #define SW2			D3
 #define SW3			D4
-/*
-#define TFT_CS		5
-#define TFT_DC		7
-#define TFT_RST		6
-*/
+
+#define TFT_CS		D5
+#define TFT_DC		D7
+#define TFT_RST		D6
+
 // #define TFT_BL 6
 #define BACKGROUND BLACK
 
@@ -69,6 +69,7 @@ String str_exe = "default";
 /* USB HID関係 */
 #define PACKET_SIZE 64
 #define PAKET_DATA_SIZE (PACKET_SIZE-COM_DATA_VAL)
+#define REV_APL_STR_LEN PAKET_DATA_SIZE
 #define VOL_CHG_INTERVAL 500
 volatile unsigned long msTime_vol;
 
@@ -77,7 +78,7 @@ uint8_t const desc_hid_report[] =
 	TUD_HID_REPORT_DESC_GENERIC_INOUT(PACKET_SIZE)
 };
 
-Adafruit_USBD_HID usb_hid(desc_hid_report, sizeof(desc_hid_report), HID_ITF_PROTOCOL_NONE, 2, true);
+Adafruit_USBD_HID usb_hid(desc_hid_report, sizeof(desc_hid_report), HID_ITF_PROTOCOL_NONE, 1, true);
 
 void TinyUSB_setup()
 {
@@ -101,6 +102,8 @@ void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8
 {
 	(void) report_id;
 	(void) report_type;
+
+	// Serial.printf("rev report report_id:%x, report_type:%x bufsize:%d, COM_DATA_ID:%x\n", report_id, report_type, bufsize, buffer[COM_DATA_ID]);
 	if(buffer[COM_DATA_ID] == DATA_READY && device_ready) {
 		// 制御アプリ起動
 		uint8_t buf[PACKET_SIZE] = {0};
@@ -108,10 +111,10 @@ void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8
 		usb_hid.sendReport(0, buf, PACKET_SIZE);
 	} else if(buffer[COM_DATA_ID] == DATA_INIT) {
 		// 音量調節対象のアプリ名と音量を初期化
-		char str_buf[64] = {0};
+		char str_buf[REV_APL_STR_LEN] = {0};
 		Set_ENC_count(buffer[COM_DATA_VAL]);
 		is_mute = buffer[COM_DATA_VAL + 1];
-		memcpy(str_buf, &buffer[COM_DATA_VAL + 2], PAKET_DATA_SIZE-1);
+		memcpy(str_buf, &buffer[COM_DATA_VAL + 2], REV_APL_STR_LEN-1);
 		str_exe = str_buf;
 		sta_pos = 0;
 		end_pos = 1;
@@ -120,10 +123,12 @@ void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8
 		uint16_t data_offset = buffer[COM_PACKET_NO]*PAKET_DATA_SIZE;
 		uint16_t data_size = (buffer[COM_DATA_SIZE_HIGH] << 8) | buffer[COM_DATA_SIZE_LOW];
 		uint16_t data_rest = data_size - data_offset;
+		// Serial.printf("COM_PACKET_NO:%d, COM_PACKET_NUM:%d, data_offset:%d, data_size:%d, data_reset:%d\n", buffer[COM_PACKET_NO], buffer[COM_PACKET_NUM], data_offset, data_size, data_rest);
 
 		memcpy(&rev_icon.recv_buf[data_offset], &buffer[COM_DATA_VAL], (data_rest > PAKET_DATA_SIZE) ? PAKET_DATA_SIZE : data_rest);
 
 		if(buffer[COM_PACKET_NO] + 1 == buffer[COM_PACKET_NUM]) {
+			// Serial.println("icon rev done.");
 			draw16bitRGBBitmapNx(icon_pos_x, icon_pos_y, rev_icon.icon_buf, icon_size, icon_size, icon_scale);
 		}
 		device_ready = true;
@@ -189,8 +194,10 @@ void ENC_READ()
 		buf[COM_DATA_SIZE_LOW] = 1;
 		buf[COM_DATA_SIZE_HIGH] = 0;
 		buf[COM_DATA_VAL] = vol_current;
-		usb_hid.sendReport(0, buf, PACKET_SIZE);
+		bool rst = usb_hid.sendReport(0, buf, PACKET_SIZE);
 		msTime_vol = millis();
+		
+		// Serial.printf("rotate enc:%d\n", rst);
 	}
 	enc_previous = enc_current;
 	vol_previous = vol_current;
@@ -217,6 +224,7 @@ void SW3_READ()
 
 void check_sw_state()
 {
+	bool rst;
 	if(int_state_sw1) {
 		if((millis() - msTime1) > SW_DELAY) {	// SW_DELAY未満の割り込みは無視する
 			msTime1 = millis();					// 割り込み時刻更新
@@ -230,7 +238,8 @@ void check_sw_state()
 				buf[COM_DATA_SIZE_HIGH] = 0;
 				buf[COM_DATA_VAL] = msTime1;
 
-				usb_hid.sendReport(0, buf, PACKET_SIZE);
+				rst = usb_hid.sendReport(0, buf, PACKET_SIZE);
+				// Serial.printf("press sw1:%d\n", rst);
 			}
 		}
 		int_state_sw1 = false;
@@ -249,7 +258,8 @@ void check_sw_state()
 				buf[COM_DATA_SIZE_HIGH] = 0;
 				buf[COM_DATA_VAL] = msTime2;
 				
-				usb_hid.sendReport(0, buf, PACKET_SIZE);
+				rst = usb_hid.sendReport(0, buf, PACKET_SIZE);
+				// Serial.printf("press sw2:%d\n", rst);
 			}
 		}
 		int_state_sw2 = false;
@@ -268,7 +278,8 @@ void check_sw_state()
 				buf[COM_DATA_SIZE_HIGH] = 0;
 				buf[COM_DATA_VAL] = msTime3;
 				
-				usb_hid.sendReport(0, buf, PACKET_SIZE);
+				rst = usb_hid.sendReport(0, buf, PACKET_SIZE);
+				// Serial.printf("press sw3:%d\n", rst);
 			}
 		}
 		int_state_sw3 = false;
@@ -328,10 +339,12 @@ void setup(void)
 
 	uint8_t buf[PACKET_SIZE] = {0};
 	buf[COM_DATA_ID] = DATA_INIT;
-	
+
+	// Serial.begin(115200);
 	while(!device_ready)
 	{
-		usb_hid.sendReport(0, buf, PACKET_SIZE);
+		bool rst = usb_hid.sendReport(0, buf, PACKET_SIZE);
+		// Serial.printf("send init:%d\n", rst);
 		delay(100);
 	}
 }

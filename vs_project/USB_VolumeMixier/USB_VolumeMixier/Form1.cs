@@ -39,9 +39,9 @@ namespace USB_Volumemixer
 		const int PACKET_SIZE = 64;
 		const int PAKET_DATA_SIZE = PACKET_SIZE - (int)com_packet.COM_DATA_VAL;
 
-		const int VendorId = 0x2886;
-		const int ProductId = 0x8042;
-		HidLibrary.HidDevice usbdevice;
+		const int VendorId = 0x239A;
+		const int ProductId = 0xCAFE;
+        HidLibrary.HidDevice usbdevice;
 		int selectItem = 0;
 		MMDeviceEnumerator devEnum;
 		AppVolumeManageer volm;
